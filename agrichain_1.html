@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AgriChain — Carbon Credit Platform</title>
+  <title>Green Ledger — Carbon Credit Platform</title>
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
     rel="stylesheet" />
@@ -1146,17 +1146,6 @@
       color: var(--text)
     }
 
-    .scanline {
-      position: fixed;
-      left: 0;
-      right: 0;
-      height: 3px;
-      pointer-events: none;
-      z-index: 999;
-      background: linear-gradient(transparent, rgba(76, 130, 89, .04), transparent);
-      animation: scanline 10s linear infinite
-    }
-
     .spin {
       width: 13px;
       height: 13px;
@@ -1219,18 +1208,24 @@
       ];
       const farmers = FD.map(function (f, i) {
         let total = 0;
-        const recs = DAYS.map(function (day, di) {
-          const p = 1700 + i * 120 + di * 55 + Math.round((Math.random() - .5) * 80);
-          const h = +(55 + i * 2 + di * (Math.random() > .5 ? 1 : -1) * 3).toFixed(1);
-          const t = +(27 + i * 0.4 + di * 0.2).toFixed(1);
-          const s = +(700 + i * 30 + di * 20).toFixed(0);
-          const c = calcC(p, h, f.crop, f.area);
-          total += c.credits;
-          return { day, p, h, t, s, agb: c.agb, bgb: c.bgb, cc: c.cc, co2e: c.co2e, credits: c.credits, health: c.health, ts: Date.now() - ((6 - di) * 864e5) };
-        });
-        const ps = recs.map(function (r) { return r.p; }), avg = ps.reduce(function (a, b) { return a + b; }, 0) / ps.length;
-        const std = Math.sqrt(ps.reduce(function (s, c) { return s + Math.pow(c - avg, 2); }, 0) / ps.length);
-        const cons = Math.max(0, Math.min(100, Math.round((1 - std / avg) * 100)));
+        let cons = 0;
+        let recs = [];
+
+        if (f.id !== 'f1') {
+          recs = DAYS.map(function (day, di) {
+            const p = 1700 + i * 120 + di * 55 + Math.round((Math.random() - .5) * 80);
+            const h = +(55 + i * 2 + di * (Math.random() > .5 ? 1 : -1) * 3).toFixed(1);
+            const t = +(27 + i * 0.4 + di * 0.2).toFixed(1);
+            const s = +(700 + i * 30 + di * 20).toFixed(0);
+            const c = calcC(p, h, f.crop, f.area);
+            total += c.credits;
+            return { day, p, h, t, s, agb: c.agb, bgb: c.bgb, cc: c.cc, co2e: c.co2e, credits: c.credits, health: c.health, ts: Date.now() - ((6 - di) * 864e5) };
+          });
+          const ps = recs.map(function (r) { return r.p; }), avg = ps.reduce(function (a, b) { return a + b; }, 0) / ps.length;
+          const std = Math.sqrt(ps.reduce(function (s, c) { return s + Math.pow(c - avg, 2); }, 0) / ps.length);
+          cons = Math.max(0, Math.min(100, Math.round((1 - std / avg) * 100)));
+        }
+
         DB.set('rec_' + f.id, recs);
         return Object.assign({}, f, { total: +total.toFixed(2), cons: cons, fid: 'FRM-00' + (i + 1) });
       });
@@ -1423,6 +1418,42 @@
       const [recs, setRecs] = useState(function () { return getRecs(user.id); });
       const [running, setRunning] = useState(false);
       const [simDay, setSimDay] = useState(0);
+      const [apiDates, setApiDates] = useState(['2025-3-1', '2025-3-2', '2025-3-3', '2025-3-4', '2025-3-5', '2025-3-6', '2025-3-7']);
+
+      React.useEffect(function () {
+        const fetchDates = async function () {
+          try {
+            const isFile = window.location.protocol === 'file:';
+            const apiHost = isFile ? '127.0.0.1' : window.location.hostname;
+            const res = await fetch(`http://${apiHost}:8000/api/v1/available-dates`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.dates && data.dates.length > 0) setApiDates(data.dates);
+            }
+          } catch (e) { }
+        };
+        fetchDates();
+      }, []);
+
+      const [apiWeather, setApiWeather] = useState(null);
+      React.useEffect(function () {
+        if (activeTab === 'weather' && !apiWeather) {
+          const fetchWeather = async function () {
+            try {
+              const isFile = window.location.protocol === 'file:';
+              const apiHost = isFile ? '127.0.0.1' : window.location.hostname;
+              const res = await fetch(`http://${apiHost}:8000/api/v1/weather`);
+              if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'success') {
+                  setApiWeather(data);
+                }
+              }
+            } catch (e) { }
+          };
+          fetchWeather();
+        }
+      }, [activeTab, apiWeather]);
 
       const refresh = function () {
         setRecs(getRecs(user.id));
@@ -1433,10 +1464,9 @@
       const simulate = async function () {
         if (running) return;
         setRunning(true);
-        const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        const dates = ['2025-3-1', '2025-3-2', '2025-3-3', '2025-3-4', '2025-3-5', '2025-3-6', '2025-3-7'];
-        const day = DAYS[simDay % 7];
+        const dates = apiDates;
         const dateParam = dates[simDay % dates.length];
+        const day = dateParam;
 
         const isFile = window.location.protocol === 'file:';
         const apiHost = isFile ? '127.0.0.1' : window.location.hostname;
@@ -1459,7 +1489,7 @@
 
           const co2e = carbon.total_co2_sequestered_kg ? +(carbon.total_co2_sequestered_kg / 1000).toFixed(3) : c.co2e;
           const credits = carbon.credits_generated ? +(carbon.credits_generated).toFixed(2) : c.credits;
-          const health = metrics.health_index ? Math.round(metrics.health_index) : c.health;
+          const health = metrics.health_index ? Math.round(metrics.health_index * 100) : c.health;
 
           addRec(user.id, { day, p, h, t, s, agb: c.agb, bgb: c.bgb, cc: c.cc, co2e, credits, health, ts: Date.now() });
           refresh();
@@ -1591,14 +1621,14 @@
                   <div className="card-title">🤖 OpenCV Plant Detection Sim</div>
                   <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.9, marginBottom: 20 }}>
                     Simulates the Python pipeline:<br />
-                    → Extracts frame from drone video feed<br />
+                    → Extracts frame from camera video feed<br />
                     → HSV thresholding → isolate green pixels<br />
                     → Contour detection → count plants<br />
                     → Wokwi ESP32 sensor readings<br />
                     → IPCC carbon math → POST to blockchain
                   </div>
-                  <button className="btn full" disabled={running || simDay >= 7} onClick={simulate}>
-                    {running ? <><Spin />Running Detection...</> : simDay >= 7 ? 'Analysis Complete (7/7 Days)' : '▶ Simulate Day ' + (simDay + 1) + ' (' + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][simDay % 7] + ')'}
+                  <button className="btn full" disabled={running || simDay >= apiDates.length} onClick={simulate}>
+                    {running ? <><Spin />Running Detection...</> : simDay >= apiDates.length ? 'Analysis Complete (' + apiDates.length + '/' + apiDates.length + ' Days)' : '▶ Simulate ' + apiDates[simDay % apiDates.length]}
                   </button>
                   {recs.length > 0 && <div style={{ marginTop: 11, textAlign: 'center', fontSize: 11.5, color: 'var(--muted)', fontWeight: 600 }}>{recs.length} day{recs.length !== 1 ? 's' : ''} recorded</div>}
                 </div>
@@ -1612,13 +1642,67 @@
                 </div>
               </div>
               <div className="card">
-                <div className="card-title">Carbon Formula</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', marginTop: 4 }}>
-                  {[['Plants × Biomass(kg)', 'var(--text)'], ['÷ 1000 ÷ area_ha', 'var(--muted)'], ['= AGB (t/ha)', 'var(--green)'], ['× 0.20', 'var(--muted)'], ['= BGB', 'var(--blue)'], ['AGB+BGB × 0.5', 'var(--muted)'], ['= Carbon (tC)', 'var(--gold)'], ['× 3.67', 'var(--muted)'], ['= CO₂eq', 'var(--teal)'], ['× area_ha', 'var(--muted)'], ['= Credits 🌿', 'var(--green)']].map(function (item, i) {
-                    return <span key={i} className="fpill" style={{ color: item[1] }}>{item[0]}</span>;
-                  })}
+                <div className="card-title">Carbon Calculation Steps</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4, fontSize: 13 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: 'var(--green)', fontWeight: 800 }}>1. Biomass:</span> <span style={{ color: 'var(--text)' }}>Total Plants × Plant Weight</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: 'var(--blue)', fontWeight: 800 }}>2. Carbon:</span> <span style={{ color: 'var(--text)' }}>50% of Total Biomass</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: 'var(--gold)', fontWeight: 800 }}>3. CO₂eq:</span> <span style={{ color: 'var(--text)' }}>Carbon × 3.67 (Molecular wt ratio)</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5, padding: '6px', background: 'rgba(76, 130, 89, 0.08)', borderRadius: '6px' }}>
+                    <span style={{ color: 'var(--green)', fontWeight: 800 }}>🌿 Final Credits:</span> <span style={{ color: 'var(--text)', fontWeight: 600 }}>1 Carbon Credit = 1 Ton of CO₂eq</span>
+                  </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'weather' && (
+            <div className="sg4 fu">
+              {apiWeather ? (
+                <>
+                  <div className="stat-card">
+                    <div className="stat-label">Temperature</div>
+                    <div style={{ fontSize: 26, fontWeight: 800, fontFamily: 'var(--mono)', color: 'var(--text)', marginTop: 4 }}>{apiWeather.weather.temperature}°C</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">Humidity</div>
+                    <div style={{ fontSize: 26, fontWeight: 800, fontFamily: 'var(--mono)', color: 'var(--blue)', marginTop: 4 }}>{apiWeather.weather.humidity}%</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">Wind Speed</div>
+                    <div style={{ fontSize: 26, fontWeight: 800, fontFamily: 'var(--mono)', color: 'var(--muted)', marginTop: 4 }}>{apiWeather.weather.wind} km/h</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">Precipitation</div>
+                    <div style={{ fontSize: 26, fontWeight: 800, fontFamily: 'var(--mono)', color: 'var(--teal)', marginTop: 4 }}>{apiWeather.weather.precipitation} mm</div>
+                  </div>
+
+                  <div className="card" style={{ gridColumn: '1 / -1', marginTop: 15 }}>
+                    <div className="card-title">Live Agricultural Alerts</div>
+                    {apiWeather.alerts.map(function (alert, i) {
+                      const isCrit = alert.startsWith('CRITICAL');
+                      const isWarn = alert.startsWith('WARNING');
+                      const bg = isCrit ? 'rgba(BD, 91, 74, .1)' : isWarn ? 'rgba(CC, 145, 58, .1)' : 'rgba(76, 130, 89, .08)';
+                      const c = isCrit ? 'var(--red)' : isWarn ? 'var(--gold)' : 'var(--green)';
+                      return (
+                        <div key={i} style={{ padding: 12, borderRadius: 8, background: isCrit ? 'rgba(255,0,0,0.05)' : isWarn ? 'rgba(255,165,0,0.05)' : 'rgba(76, 130, 89, .08)', color: c, fontWeight: 700, marginBottom: 8, fontSize: 13 }}>
+                          {alert}
+                        </div>
+                      );
+                    })}
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10, textAlign: 'right' }}>
+                      Data powered by Open-Meteo API
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="empty" style={{ gridColumn: '1 / -1' }}><Spin /> Fetching Live Weather Data...</div>
+              )}
             </div>
           )}
 
@@ -1635,12 +1719,48 @@
       const [buying, setBuying] = useState(false);
       const [tick, setTick] = useState(0);
 
+      const [apiFarm, setApiFarm] = useState(null);
+
+      React.useEffect(function () {
+        const fetchApiFarm = async function () {
+          try {
+            const isFile = window.location.protocol === 'file:';
+            const apiHost = isFile ? '127.0.0.1' : window.location.hostname;
+            const res = await fetch(`http://${apiHost}:8000/api/v1/analyze-period`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.status === 'success' && data.summary && data.summary.total_credits_for_period > 0) {
+                const dates = data.summary.analyzed_dates;
+                const lastDate = dates[dates.length - 1];
+                const lastCo2 = data.period_data[lastDate].carbon_data.total_co2_sequestered_kg;
+                const agb = +(lastCo2 / 1000 / 1.835).toFixed(1);
+                const avgHealth = Math.round(data.summary.average_health_index * 100);
+                setApiFarm({
+                  id: 'api-real-farm',
+                  farmName: data.farm_name + ' (API Real)',
+                  loc: 'Satellite Link',
+                  crop: 'API Data',
+                  total: data.summary.total_credits_for_period,
+                  cons: avgHealth || 92,
+                  bee: true,
+                  verra: true,
+                  price: +(15 + (avgHealth || 92) * 0.1).toFixed(1),
+                  agb: agb
+                });
+              }
+            }
+          } catch (e) { }
+        };
+        fetchApiFarm();
+      }, []);
+
       const farms = useMemo(function () {
         let f = DB.get('farmers', []).filter(function (x) { return x.total > 0; });
+        if (apiFarm) f = [apiFarm, ...f];
         if (filter === 'verified') f = f.filter(function (x) { return x.bee && x.verra; });
         if (filter === 'top') f = f.filter(function (x) { return x.cons >= 85; });
-        return f.map(function (x) { return Object.assign({}, x, { price: +(15 + x.cons * 0.1).toFixed(1) }); });
-      }, [filter, tick]);
+        return f.map(function (x) { return Object.assign({}, x, { price: x.price || +(15 + x.cons * 0.1).toFixed(1) }); });
+      }, [filter, tick, apiFarm]);
 
       const fu = DB.get('traders', []).find(function (t) { return t.id === user.id; }) || user;
 
@@ -1652,8 +1772,12 @@
         setTimeout(function () {
           const tx = '0x' + Array.from({ length: 64 }, function () { return '0123456789abcdef'[Math.floor(Math.random() * 16)]; }).join('');
           const cost = +(n * sel.price).toFixed(2);
-          const farmers = DB.get('farmers', []), fi = farmers.findIndex(function (f) { return f.id === sel.id; });
-          if (fi >= 0) { farmers[fi].total = +(farmers[fi].total - n).toFixed(2); DB.set('farmers', farmers); }
+          if (sel.id === 'api-real-farm') {
+            setApiFarm(function (prev) { return Object.assign({}, prev, { total: +(prev.total - n).toFixed(2) }); });
+          } else {
+            const farmers = DB.get('farmers', []), fi = farmers.findIndex(function (f) { return f.id === sel.id; });
+            if (fi >= 0) { farmers[fi].total = +(farmers[fi].total - n).toFixed(2); DB.set('farmers', farmers); }
+          }
           const traders = DB.get('traders', []), ti = traders.findIndex(function (t) { return t.id === user.id; });
           if (ti >= 0) {
             traders[ti].credits = (traders[ti].credits || 0) + n;
@@ -1679,7 +1803,7 @@
             </div>
           </div>
           <div className="tabs">
-            {[['marketplace', '📈 Marketplace'], ['portfolio', '💼 Portfolio'], ['web3', '🔗 Web3']].map(function ([k, v]) {
+            {[['marketplace', '📈 Marketplace'], ['portfolio', '💼 Portfolio'], ['Wallet', '🔗 Wallet']].map(function ([k, v]) {
               return <button key={k} className={'tab' + (activeTab === k ? ' on' : '')} onClick={function () { setActiveTab(k); }}>{v}</button>;
             })}
           </div>
@@ -1716,7 +1840,7 @@
                         <div className="farm-stats">
                           <div className="fsb"><div className="fsb-val">{farm.total && farm.total.toFixed(1)}</div><div className="fsb-lbl">Credits</div></div>
                           <div className="fsb"><div className="fsb-val" style={{ color: 'var(--blue)' }}>₹{farm.price}</div><div className="fsb-lbl">per credit</div></div>
-                          <div className="fsb"><div className="fsb-val" style={{ color: 'var(--gold)' }}>{(getRecs(farm.id).slice(-1)[0] || {}).agb || 0}t</div><div className="fsb-lbl">Biomass</div></div>
+                          <div className="fsb"><div className="fsb-val" style={{ color: 'var(--gold)' }}>{farm.agb || (getRecs(farm.id).slice(-1)[0] || {}).agb || 0}t</div><div className="fsb-lbl">Biomass</div></div>
                         </div>
                         <button className="btn full" disabled={farm.total <= 0} onClick={function () { setSel(farm); setQty('10'); }}>
                           {farm.total > 0 ? 'Buy Credits →' : 'No Credits Available'}
@@ -1764,7 +1888,7 @@
             </div>
           )}
 
-          {activeTab === 'web3' && (
+          {activeTab === 'Wallet' && (
             <div className="fu">
               <div className="g2b">
                 <div className="card">
@@ -1851,7 +1975,7 @@
           <div className="login-card">
             <div className="login-head">
               <span className="login-icon">🌿</span>
-              <div className="login-title">AgriChain</div>
+              <div className="login-title">Green Ledger</div>
               <div className="login-sub">Project Demo Link</div>
             </div>
 
@@ -1889,24 +2013,24 @@
       const logout = function () { setPage('login'); setRole(null); setUser(null); };
 
       if (page === 'login') return <>
-        <div className="scanline" />
+
         <AuthScreen onLogin={login} />
         <Toast toast={toast} onClose={function () { setToast(null); }} />
       </>;
 
-      const FN = [{ icon: '🌿', label: 'Dashboard', tab: 'overview' }, { icon: '📊', label: 'Analytics', tab: 'deepdive' }, { icon: '🤖', label: 'Video Analysis', tab: 'simulate' }];
-      const TN = [{ icon: '📈', label: 'Marketplace', tab: 'marketplace' }, { icon: '💼', label: 'Portfolio', tab: 'portfolio' }, { icon: '🔗', label: 'Web3', tab: 'web3' }];
+      const FN = [{ icon: '🌿', label: 'Dashboard', tab: 'overview' }, { icon: '📊', label: 'Analytics', tab: 'deepdive' }, { icon: '🤖', label: 'Video Analysis', tab: 'simulate' }, { icon: '🌤️', label: 'Live Weather', tab: 'weather' }];
+      const TN = [{ icon: '📈', label: 'Marketplace', tab: 'marketplace' }, { icon: '💼', label: 'Portfolio', tab: 'portfolio' }, { icon: '🔗', label: 'Wallet', tab: 'Wallet' }];
       const nav = role === 'farmer' ? FN : TN;
 
       const handleNav = function (i, tab) { setNavIdx(i); if (role === 'farmer') setFarmerTab(tab); else setTraderTab(tab); };
-      const sensors = role === 'farmer' ? [['ESP32 Wokwi', 'Polling'], ['UAV Feed', 'Active'], ['OpenCV API', 'Ready'], ['Carbon Math', 'Sync']] : [['Polygon Amoy', 'Connected'], ['Gas', '12 Gwei'], ['Verifier', 'Verra'], ['GCT Token', 'Active']];
+      const sensors = role === 'farmer' ? [['ESP32 Wokwi', 'Polling'], ['Camera Feed', 'Active'], ['OpenCV API', 'Ready'], ['Carbon Math', 'Sync']] : [['Polygon Amoy', 'Connected'], ['Gas', '12 Gwei'], ['Verifier', 'Verra'], ['GCT Token', 'Active']];
       const fu = role === 'farmer' ? DB.get('farmers', []).find(function (f) { return f.id === user.id; }) || user : DB.get('traders', []).find(function (t) { return t.id === user.id; }) || user;
 
       return <>
-        <div className="scanline" />
+
         <div className="shell">
           <div className="sidebar">
-            <div className="sb-logo"><span className="sb-logo-icon">🌿</span><div><div className="sb-logo-name">AgriChain</div><div className="sb-logo-sub">Carbon Credits</div></div></div>
+            <div className="sb-logo"><span className="sb-logo-icon">🌿</span><div><div className="sb-logo-name">Green Ledger</div><div className="sb-logo-sub">Carbon Credits</div></div></div>
             {nav.map(function (item, i) {
               return <div key={i} className={'nav-item' + (navIdx === i ? ' active' : '')} onClick={function () { handleNav(i, item.tab); }}><span className="nav-icon">{item.icon}</span>{item.label}</div>;
             })}
