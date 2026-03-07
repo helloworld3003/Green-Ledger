@@ -11,8 +11,7 @@ def get_sensor_data(file_path="wokwi_mock.json"):
     """
     default_values = {
         "humidity": 65.5,
-        "temperature": 28.2,
-        "solar_radiation": 850.0
+        "temperature": 28.2
     }
     
     if os.path.exists(file_path):
@@ -32,9 +31,3 @@ def get_sensor_data(file_path="wokwi_mock.json"):
         
     return default_values
 
-if __name__ == "__main__":
-    # Test the function
-    sensor_data = get_sensor_data()
-    print("Fetched Sensor Data:")
-    for key, value in sensor_data.items():
-        print(f"  {key.capitalize()}: {value}")
