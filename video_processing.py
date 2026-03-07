@@ -1,8 +1,6 @@
 import cv2
 import numpy as np
 import os
-import re
-import glob
 
 def analyze_farm_video(video_path, farm_area_polygon=None):
     """
@@ -64,9 +62,9 @@ def analyze_farm_video(video_path, farm_area_polygon=None):
             # 2. Convert to HSV color space and apply green threshold
             hsv = cv2.cvtColor(roi_frame, cv2.COLOR_BGR2HSV)
             
-            # Broad HSV range for green vegetation
-            lower_green = np.array([30, 40, 40])
-            upper_green = np.array([90, 255, 255])
+            # Broad HSV range for yellow-green to dark-green vegetation
+            lower_green = np.array([15, 30, 30])
+            upper_green = np.array([100, 255, 255])
             
             green_mask = cv2.inRange(hsv, lower_green, upper_green)
             
@@ -118,56 +116,3 @@ def analyze_farm_video(video_path, farm_area_polygon=None):
     avg_health = total_green_density / processed_frames if processed_frames > 0 else 0.0
 
     return avg_plants, avg_health
-
-def analyze_farm_period(directory=".", pattern=r"test_(.*)\.mp4", farm_area_polygon=None):
-    """
-    Finds all videos matching the pattern in the directory, extracts the date,
-    and analyzes each video.
-    
-    Args:
-        directory (str): The folder to search for videos.
-        pattern (str): Regex pattern to match the filename and extract the date.
-        farm_area_polygon (list, optional): Polygon coordinates for ROI.
-        
-    Returns:
-        dict: A dictionary mapping the extracted date to the analysis results.
-    """
-    results_by_date = {}
-    
-    for filename in os.listdir(directory):
-        match = re.match(pattern, filename)
-        if match:
-            date_str = match.group(1)
-            video_path = os.path.join(directory, filename)
-            
-            plants, health = analyze_farm_video(video_path, farm_area_polygon)
-            results_by_date[date_str] = {
-                "plant_count": plants,
-                "health_index": health
-            }
-            
-    # Sort results by date
-    sorted_results = dict(sorted(results_by_date.items()))
-    return sorted_results
-
-if __name__ == "__main__":
-    # Example test call for a single video
-    available_videos = glob.glob("test_*.mp4")
-    video_file = available_videos[0] if available_videos else "test.mp4"
-    
-    if os.path.exists(video_file):
-        plants, health = analyze_farm_video(video_file, farm_area_polygon=None)
-        print(f"Results for single video {video_file}:")
-        print(f"Average Plant Count: {plants}")
-        print(f"Average Green Density (Health): {health:.4f}\n")
-    else:
-        print(f"Provide a valid video to test. (No 'test_*.mp4' found).\n")
-        
-    # Example test call for a time period
-    print("Analyzing time period for 'test_<date>.mp4' videos...")
-    period_results = analyze_farm_period(".", farm_area_polygon=None)
-    if not period_results:
-        print("No videos matching 'test_<date>.mp4' found.")
-    else:
-        for date_str, metrics in period_results.items():
-            print(f"Date: {date_str} - Plants: {metrics['plant_count']}, Health: {metrics['health_index']:.4f}")
