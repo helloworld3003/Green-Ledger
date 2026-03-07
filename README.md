@@ -2,7 +2,7 @@
 **Empowering Small-Scale Farmers for the Global Carbon Economy**
 
 **Team:** DataGeeks (Jadavpur University)
-**Track:** Green Technology
+**Track:** Open
 
 
 
