@@ -1,14 +1,95 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 import uvicorn
-from video_processing import analyze_farm_video, analyze_farm_period
+from video_processing import analyze_farm_video
 from sensor_ingestion import get_sensor_data
 from carbon_engine import calculate_carbon_credits
 import glob
 import os
+import json
+import asyncio
+import re
+import urllib.request
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FARM_NAME = "Green Valley Carbon Farm"
+DATA_FILE = os.path.join(BASE_DIR, "api_data.json")
+
+clients_event = asyncio.Event()
+
+def save_to_history(payload):
+    history = []
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r") as f:
+            try:
+                history = json.load(f)
+            except:
+                pass
+    date = payload.get("date")
+    # avoid duplicates
+    history = [h for h in history if h.get("date") != date]
+    history.append(payload)
+    with open(DATA_FILE, "w") as f:
+        json.dump(history, f, indent=4)
+
+async def watch_folder():
+    # regex matches: test_YYYY-MM-DD.mp4 or test_YYYY-M-D.mp4
+    valid_pattern = re.compile(r"^test_(\d{4}-\d{1,2}-\d{1,2})\.mp4$")
+    
+    def get_valid_videos():
+        all_videos = glob.glob(os.path.join(BASE_DIR, "test_*.mp4"))
+        return set([v for v in all_videos if valid_pattern.match(os.path.basename(v))])
+        
+    known_videos = get_valid_videos()
+    while True:
+        await asyncio.sleep(2)
+        current_videos = get_valid_videos()
+        new_videos = current_videos - known_videos
+        
+        if new_videos:
+            for nv in new_videos:
+                match = valid_pattern.match(os.path.basename(nv))
+                date = match.group(1) if match else "N/A"
+                print(f"New video detected: {nv}, analyzing in background...")
+                try:
+                    await asyncio.to_thread(run_analysis_and_store, nv, date)
+                except Exception as e:
+                    print(f"Error analyzing {nv}: {e}")
+            
+            # Notify clients to reload page
+            clients_event.set()
+            await asyncio.sleep(0.1)
+            clients_event.clear()
+            
+            known_videos = current_videos
+
+def run_analysis_and_store(video_path, date):
+    plant_count, health_index = analyze_farm_video(video_path, farm_area_polygon=None)
+    sensor_data = get_sensor_data(os.path.join(BASE_DIR, "wokwi_mock.json"))
+    carbon_results = calculate_carbon_credits(plant_count, sensor_data)
+    total_co2_kg = carbon_results.get("co2_credits", 0.0)
+    credits_generated = total_co2_kg / 1000.0
+    
+    response_payload = {
+        "status": "success",
+        "farm_name": FARM_NAME,
+        "date": date,
+        "farm_metrics": {
+            "plant_count": plant_count,
+            "health_index": round(health_index, 2),
+            "temperature": sensor_data.get("temperature", 0.0),
+            "humidity": sensor_data.get("humidity", 0.0)
+        },
+        "carbon_data": {
+            "total_co2_sequestered_kg": round(total_co2_kg, 1),
+            "credits_generated": round(credits_generated, 2),
+            "consistency_score": carbon_results.get("consistency_score", 0),
+            "verified_by": "Virtual Satellite AI"
+        }
+    }
+    save_to_history(response_payload)
+    return response_payload
 
 # Initialize the FastAPI application
 app = FastAPI(
@@ -28,12 +109,11 @@ app.add_middleware(
 @app.get("/api/v1/available-dates")
 async def get_available_dates():
     """Returns a sorted list of dates extracted from the available test_*.mp4 videos."""
-    import glob, re, os
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     videos = glob.glob(os.path.join(BASE_DIR, "test_*.mp4"))
     dates = []
+    valid_pattern = re.compile(r"^test_(\d{4}-\d{1,2}-\d{1,2})\.mp4$")
     for vp in videos:
-        match = re.search(r"test_(.*)\.mp4", os.path.basename(vp))
+        match = valid_pattern.match(os.path.basename(vp))
         if match:
             dates.append(match.group(1))
     dates.sort()
@@ -56,7 +136,6 @@ async def analyze_farm(date: str = Query(None, description="Date of the video to
         available_videos = glob.glob(os.path.join(BASE_DIR, "test_*.mp4"))
         video_path = available_videos[0] if available_videos else os.path.join(BASE_DIR, "test.mp4")
         
-    import re
     match = re.search(r"test_(.*)\.mp4", video_path)
     processed_date = date if date else (match.group(1) if match else "N/A")
         
@@ -95,84 +174,37 @@ async def analyze_farm(date: str = Query(None, description="Date of the video to
         }
     }
     
-    return response_payload
-
-@app.get("/api/v1/analyze-period")
-async def analyze_period(directory: str = Query(None, description="Directory containing test_*.mp4 videos. If None, uses the app directory.")):
-    """
-    Executes the pipeline for a time period, reading videos named 'test_<date>.mp4'.
-    Returns metrics and aggregated carbon credits for each date.
-    """
-    if not directory:
-        directory = BASE_DIR
-        
-    # 1. Execute video analysis for the period using full frame to capture all plants
-    period_results = analyze_farm_period(directory, farm_area_polygon=None)
-    
-    # 2. Fetch sensor data (using a single mocked file for now)
-    sensor_data = get_sensor_data(os.path.join(BASE_DIR, "wokwi_mock.json"))
-    
-    response_payload = {
-        "status": "success",
-        "farm_name": FARM_NAME,
-        "period_data": {}
-    }
-    
-    total_period_credits = 0.0
-    total_plants = 0
-    total_health = 0.0
-    
-    for date_str, metrics in period_results.items():
-        plant_count = metrics["plant_count"]
-        health_index = metrics["health_index"]
-        
-        # 3. Run the carbon math for this date
-        carbon_results = calculate_carbon_credits(plant_count, sensor_data)
-        
-        total_co2_kg = carbon_results.get("co2_credits", 0.0)
-        credits_generated = total_co2_kg / 1000.0
-        total_period_credits += credits_generated
-        total_plants += plant_count
-        total_health += health_index
-        
-        response_payload["period_data"][date_str] = {
-            "farm_metrics": {
-                "plant_count": plant_count,
-                "health_index": round(health_index, 2),
-                "temperature": sensor_data.get("temperature", 0.0),
-                "humidity": sensor_data.get("humidity", 0.0)
-            },
-            "carbon_data": {
-                "total_co2_sequestered_kg": round(total_co2_kg, 1),
-                "credits_generated": round(credits_generated, 2),
-                "consistency_score": carbon_results.get("consistency_score", 0)
-            }
-        }
-        
-    dates = list(period_results.keys())
-    date_range = f"{dates[0]} to {dates[-1]}" if dates else "N/A"
-    
-    num_days = len(period_results)
-    avg_plants = total_plants / num_days if num_days > 0 else 0
-    avg_health = total_health / num_days if num_days > 0 else 0.0
-
-    response_payload["summary"] = {
-        "date_range": date_range,
-        "analyzed_dates": dates,
-        "total_credits_for_period": round(total_period_credits, 2),
-        "average_plant_count": round(avg_plants),
-        "average_health_index": round(avg_health, 2),
-        "days_analyzed": num_days,
-        "verified_by": "Virtual Satellite AI"
-    }
+    save_to_history(response_payload)
     
     return response_payload
 
-import urllib.request
-import json
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(watch_folder())
+
+@app.get("/api/v1/history")
+async def get_history():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r") as f:
+            try:
+                return json.load(f)
+            except:
+                return []
+    return []
+
+async def event_generator(request: Request):
+    while True:
+        if await request.is_disconnected():
+            break
+        await clients_event.wait()
+        yield "data: reload\n\n"
+
+@app.get("/api/v1/stream")
+async def stream(request: Request):
+    return StreamingResponse(event_generator(request), media_type="text/event-stream")
 
 @app.get("/api/v1/weather")
-async def get_weather(lat: float = 20.5937, lon: float = 78.9629):
+async def get_weather(lat: float = 22.5004, lon: float = 88.3709):
     """Fetches real-time weather data from Open-Meteo API."""
     url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m"
     try:

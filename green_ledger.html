@@ -1200,7 +1200,7 @@
       if (DB.get('seeded')) return;
       const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       const FD = [
-        { id: 'f1', name: 'Ravi Kumar', email: 'ravi@demo.io', pw: 'password123', farmName: 'Sundarbans Delta', loc: 'West Bengal', area: 12, crop: 'Rice', bee: true, verra: true },
+        { id: 'f1', name: 'Ravi Kumar', email: 'ravi@demo.io', pw: 'password123', farmName: 'Green Valley Carbon Farm', loc: 'West Bengal', area: 12, crop: 'Rice', bee: true, verra: true },
         { id: 'f2', name: 'Priya Sharma', email: 'priya@demo.io', pw: 'password123', farmName: 'Coorg Highlands', loc: 'Karnataka', area: 8, crop: 'Coffee', bee: true, verra: false },
         { id: 'f3', name: 'Arjun Patel', email: 'arjun@demo.io', pw: 'password123', farmName: 'Punjab Wheat Plains', loc: 'Punjab', area: 20, crop: 'Wheat', bee: true, verra: true },
         { id: 'f4', name: 'Meena Nair', email: 'meena@demo.io', pw: 'password123', farmName: 'Kerala Spice Garden', loc: 'Kerala', area: 6, crop: 'Spices', bee: false, verra: true },
@@ -1420,12 +1420,25 @@
       const [simDay, setSimDay] = useState(0);
       const [apiDates, setApiDates] = useState(['2025-3-1', '2025-3-2', '2025-3-3', '2025-3-4', '2025-3-5', '2025-3-6', '2025-3-7']);
 
+      // ────────── CONFIGURATION FOR HACKATHON ──────────
+      // If hosting the site publicly but running main.py on your laptop via Ngrok,
+      // paste your Ngrok URL here (e.g., 'https://a1b2c3d4.ngrok-free.app').
+      // Otherwise, it defaults to your local computer (127.0.0.1:8000).
+      const NGROK_URL = 'https://two-geese-travel.loca.lt';
+
+      const getApiHost = () => {
+        if (NGROK_URL) return NGROK_URL;
+        const isFile = window.location.protocol === 'file:';
+        return isFile ? 'http://127.0.0.1:8000' : `http://${window.location.hostname}:8000`;
+      };
+      // ───────────────────────────────────────────────
+
       React.useEffect(function () {
         const fetchDates = async function () {
           try {
-            const isFile = window.location.protocol === 'file:';
-            const apiHost = isFile ? '127.0.0.1' : window.location.hostname;
-            const res = await fetch(`http://${apiHost}:8000/api/v1/available-dates`);
+            const res = await fetch(`${getApiHost()}/api/v1/available-dates`, {
+              headers: { 'Bypass-Tunnel-Reminder': 'true' }
+            });
             if (res.ok) {
               const data = await res.json();
               if (data.dates && data.dates.length > 0) setApiDates(data.dates);
@@ -1433,23 +1446,108 @@
           } catch (e) { }
         };
         fetchDates();
-      }, []);
+
+        const fetchHistory = async function () {
+          try {
+            const res = await fetch(`${getApiHost()}/api/v1/history`, {
+              headers: { 'Bypass-Tunnel-Reminder': 'true' }
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.length > 0) {
+                const newRecs = data.map(function (d) {
+                  const p = d.farm_metrics.plant_count;
+                  const h = d.farm_metrics.humidity;
+                  const c = calcC(p, h, user.crop, user.area);
+                  let health = d.farm_metrics.health_index;
+                  if (health <= 1) health = Math.round(health * 100);
+                  // Ensure co2e is positive
+                  const co2eRaw = d.carbon_data.total_co2_sequestered_kg;
+                  const validCo2e = (co2eRaw !== undefined && co2eRaw !== null) ? co2eRaw : c.co2e;
+                  const validCredits = (d.carbon_data.credits_generated !== undefined && d.carbon_data.credits_generated !== null) ? d.carbon_data.credits_generated : c.credits;
+
+                  return {
+                    day: d.date,
+                    p: p,
+                    h: h,
+                    t: d.farm_metrics.temperature,
+                    s: 700 + Math.random() * 200,
+                    agb: c.agb,
+                    bgb: c.bgb,
+                    cc: c.cc,
+                    co2e: validCo2e / 1000,
+                    credits: validCredits,
+                    health: health,
+                    ts: Date.now()
+                  };
+                });
+                DB.set('rec_' + user.id, newRecs);
+                setRecs(newRecs);
+                const farmers = DB.get('farmers', []);
+                const i = farmers.findIndex(function (f) { return f.id === user.id; });
+                if (i >= 0) {
+                  // Explicitly use API returned farm name if present
+                  if (data[0] && data[0].farm_name) {
+                    farmers[i].farmName = data[0].farm_name;
+                  }
+
+                  // Total credits should subtract credits spent/sold.
+                  const totalGained = newRecs.reduce(function (a, b) { return a + b.credits; }, 0);
+                  farmers[i].total = +(totalGained - (farmers[i].sold || 0)).toFixed(2);
+
+                  const ps = newRecs.map(function (r) { return r.p; });
+                  if (ps.length > 1) {
+                    const avg = ps.reduce(function (a, b) { return a + b; }, 0) / ps.length;
+                    const std = Math.sqrt(ps.reduce(function (s, c) { return s + Math.pow(c - avg, 2); }, 0) / ps.length);
+                    farmers[i].cons = Math.max(0, Math.min(100, Math.round((1 - std / avg) * 100)));
+                  } else if (ps.length === 1) {
+                    farmers[i].cons = 100;
+                  }
+                  DB.set('farmers', farmers);
+                  setUser(farmers[i]);
+                }
+              }
+            }
+          } catch (e) {
+            console.error("API fetch failed. Ensure FastAPI is running.", e);
+          }
+        };
+        fetchHistory();
+
+        // Optional: Re-enable Server-Sent Events if your Ngrok tunnel supports streaming
+        try {
+          const evtSource = new EventSource(`${getApiHost()}/api/v1/stream`);
+          evtSource.onmessage = function (event) {
+            console.log("SSE update:", event.data);
+            if (event.data === 'reload') window.location.reload();
+          };
+          return function () { evtSource.close(); };
+        } catch (e) { }
+
+      }, [user.id, user.crop, user.area]);
 
       const [apiWeather, setApiWeather] = useState(null);
       React.useEffect(function () {
         if (activeTab === 'weather' && !apiWeather) {
           const fetchWeather = async function () {
             try {
-              const isFile = window.location.protocol === 'file:';
-              const apiHost = isFile ? '127.0.0.1' : window.location.hostname;
-              const res = await fetch(`http://${apiHost}:8000/api/v1/weather`);
+              const res = await fetch(`${getApiHost()}/api/v1/weather`, {
+                headers: { 'Bypass-Tunnel-Reminder': 'true' }
+              });
               if (res.ok) {
                 const data = await res.json();
                 if (data.status === 'success') {
                   setApiWeather(data);
                 }
               }
-            } catch (e) { }
+            } catch (e) {
+              // Static weather fallback if API is not available
+              setApiWeather({
+                status: 'success',
+                weather: { temperature: 28.5, humidity: 64, wind: 12, precipitation: 0 },
+                alerts: ['WARNING: High humidity may increase fungal risk.']
+              });
+            }
           };
           fetchWeather();
         }
@@ -1468,12 +1566,10 @@
         const dateParam = dates[simDay % dates.length];
         const day = dateParam;
 
-        const isFile = window.location.protocol === 'file:';
-        const apiHost = isFile ? '127.0.0.1' : window.location.hostname;
-        const apiBaseUrl = `http://${apiHost}:8000`;
-
         try {
-          const res = await fetch(`${apiBaseUrl}/api/v1/analyze-farm?date=${dateParam}`);
+          const res = await fetch(`${getApiHost()}/api/v1/analyze-farm?date=${dateParam}`, {
+            headers: { 'Bypass-Tunnel-Reminder': 'true' }
+          });
           if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
           const data = await res.json();
 
@@ -1521,7 +1617,7 @@
           <div className="topbar">
             <div>
               <div className="pg-title">Farmer <span>Dashboard</span></div>
-              <div className="pg-sub">{fu.fid} · {fu.crop} · {fu.area} acres · {fu.loc}</div>
+              <div className="pg-sub">{fu.fid} · <strong>{fu.farmName}</strong> · {fu.crop} · {fu.area} acres · {fu.loc}</div>
             </div>
             <div className="tb-right">
               <div className="live-tag"><div className="live-dot" />Live Monitoring</div>
@@ -1719,48 +1815,18 @@
       const [buying, setBuying] = useState(false);
       const [tick, setTick] = useState(0);
 
-      const [apiFarm, setApiFarm] = useState(null);
-
+      // We no longer fetch api_farm from a deleted analyze-period endpoint here.
+      // Instead, we let the normal farmer table flow into the marketplace natively.
       React.useEffect(function () {
-        const fetchApiFarm = async function () {
-          try {
-            const isFile = window.location.protocol === 'file:';
-            const apiHost = isFile ? '127.0.0.1' : window.location.hostname;
-            const res = await fetch(`http://${apiHost}:8000/api/v1/analyze-period`);
-            if (res.ok) {
-              const data = await res.json();
-              if (data.status === 'success' && data.summary && data.summary.total_credits_for_period > 0) {
-                const dates = data.summary.analyzed_dates;
-                const lastDate = dates[dates.length - 1];
-                const lastCo2 = data.period_data[lastDate].carbon_data.total_co2_sequestered_kg;
-                const agb = +(lastCo2 / 1000 / 1.835).toFixed(1);
-                const avgHealth = Math.round(data.summary.average_health_index * 100);
-                setApiFarm({
-                  id: 'api-real-farm',
-                  farmName: data.farm_name + ' (API Real)',
-                  loc: 'Satellite Link',
-                  crop: 'API Data',
-                  total: data.summary.total_credits_for_period,
-                  cons: avgHealth || 92,
-                  bee: true,
-                  verra: true,
-                  price: +(15 + (avgHealth || 92) * 0.1).toFixed(1),
-                  agb: agb
-                });
-              }
-            }
-          } catch (e) { }
-        };
-        fetchApiFarm();
+        // Empty, preserved for hooks ordering if needed or could be removed if hooks allow
       }, []);
 
       const farms = useMemo(function () {
         let f = DB.get('farmers', []).filter(function (x) { return x.total > 0; });
-        if (apiFarm) f = [apiFarm, ...f];
         if (filter === 'verified') f = f.filter(function (x) { return x.bee && x.verra; });
         if (filter === 'top') f = f.filter(function (x) { return x.cons >= 85; });
         return f.map(function (x) { return Object.assign({}, x, { price: x.price || +(15 + x.cons * 0.1).toFixed(1) }); });
-      }, [filter, tick, apiFarm]);
+      }, [filter, tick]);
 
       const fu = DB.get('traders', []).find(function (t) { return t.id === user.id; }) || user;
 
@@ -1772,11 +1838,11 @@
         setTimeout(function () {
           const tx = '0x' + Array.from({ length: 64 }, function () { return '0123456789abcdef'[Math.floor(Math.random() * 16)]; }).join('');
           const cost = +(n * sel.price).toFixed(2);
-          if (sel.id === 'api-real-farm') {
-            setApiFarm(function (prev) { return Object.assign({}, prev, { total: +(prev.total - n).toFixed(2) }); });
-          } else {
-            const farmers = DB.get('farmers', []), fi = farmers.findIndex(function (f) { return f.id === sel.id; });
-            if (fi >= 0) { farmers[fi].total = +(farmers[fi].total - n).toFixed(2); DB.set('farmers', farmers); }
+          const farmers = DB.get('farmers', []), fi = farmers.findIndex(function (f) { return f.id === sel.id; });
+          if (fi >= 0) {
+            farmers[fi].total = +(farmers[fi].total - n).toFixed(2);
+            farmers[fi].sold = (farmers[fi].sold || 0) + n;
+            DB.set('farmers', farmers);
           }
           const traders = DB.get('traders', []), ti = traders.findIndex(function (t) { return t.id === user.id; });
           if (ti >= 0) {
