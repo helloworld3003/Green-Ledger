@@ -12,6 +12,8 @@ Indian farmers often face severe economic challenges. However, with the recent b
 **Our Vision:** We replace expensive human auditors with a "Phygital" (Physical + Digital) verification node. By erecting a single pole in the middle of a farm equipped with a 360-degree panoramic camera and basic environmental sensors (temperature/humidity), we can gather raw, localized data. This data is autonomously processed via our Python Computer Vision and AI pipeline to calculate, verify, and mint carbon credits with zero friction.
 
 ---
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/vecE_duvO90/0.jpg)](https://www.youtube.com)
+
 
 ## 🛠️ The Architecture & Codebase
 Our system is driven by a lightweight, modular Python backend and a zero-build React frontend.
