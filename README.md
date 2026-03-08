@@ -15,7 +15,11 @@ Indian farmers often face severe economic challenges. However, with the recent b
 
 
 
-https://github.com/user-attachments/assets/336467e7-9ac7-4227-9c18-85381176acd8
+https://github.com/user-attachments/assets/bdd34498-be9d-442c-adb2-92faa0a20282
+
+
+
+
 
 
 
