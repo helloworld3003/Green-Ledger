@@ -23,25 +23,201 @@
 
     :root {
       --bg: #EAE6DB;
-      /* Muted oat background */
       --bg2: #F3F0E8;
       --bg3: #FFFFFF;
       --green: #4C8259;
-      /* Forest green */
       --green2: #65A175;
       --green3: #A0C2A8;
       --gold: #CC913A;
-      /* Harvest gold */
       --blue: #558797;
       --red: #BD5B4A;
       --teal: #64968C;
       --text: #213326;
-      /* Dark slate green for text */
       --muted: #6B8071;
       --border: rgba(76, 130, 89, 0.2);
       --glow: 0 4px 20px rgba(76, 130, 89, 0.1);
       --font: 'Outfit', sans-serif;
       --mono: 'JetBrains Mono', monospace;
+      --sidebar-bg: rgba(255,255,255,.97);
+      --card-bg: rgba(255,255,255,.85);
+      --modal-bg: rgba(255,255,255,.98);
+      --input-bg: rgba(243,240,232,.8);
+      --stat-bg: rgba(255,255,255,.9);
+      --farm-card-bg: rgba(255,255,255,.88);
+    }
+
+    /* ── DARK THEME ── */
+    [data-theme="dark"] {
+      --bg: #0d1710;
+      --bg2: #121e15;
+      --bg3: #192b1d;
+      --text: #cce5d2;
+      --muted: #6fa07c;
+      --border: rgba(100,170,115,.18);
+      --glow: 0 4px 24px rgba(76,130,89,.2);
+      --sidebar-bg: rgba(12,22,14,.98);
+      --card-bg: rgba(18,32,22,.92);
+      --modal-bg: rgba(14,26,16,.99);
+      --input-bg: rgba(16,30,20,.9);
+      --stat-bg: rgba(19,34,24,.94);
+      --farm-card-bg: rgba(16,30,20,.94);
+    }
+    [data-theme="dark"] body { background: var(--bg); }
+    [data-theme="dark"] .sidebar { background: var(--sidebar-bg) !important; }
+    [data-theme="dark"] .card { background: var(--card-bg) !important; }
+    [data-theme="dark"] .stat-card { background: var(--stat-bg) !important; }
+    [data-theme="dark"] .farm-card { background: var(--farm-card-bg) !important; }
+    [data-theme="dark"] .login-card { background: var(--sidebar-bg) !important; box-shadow: 0 40px 90px rgba(0,0,0,.9); }
+    [data-theme="dark"] .fi, [data-theme="dark"] .fs, [data-theme="dark"] .qty-input { background: var(--input-bg) !important; color: var(--text) !important; border-color: var(--border) !important; }
+    [data-theme="dark"] .modal { background: var(--modal-bg) !important; }
+    [data-theme="dark"] .user-pill { background: var(--bg3) !important; }
+    [data-theme="dark"] .mode-tabs { background: rgba(16,30,20,.8) !important; }
+    [data-theme="dark"] .wx-card { background: var(--bg3) !important; }
+    [data-theme="dark"] .toast { background: var(--sidebar-bg) !important; }
+    [data-theme="dark"] .pf-big { background: var(--stat-bg) !important; }
+    [data-theme="dark"] table th { background: rgba(76,130,89,.1) !important; color: var(--muted) !important; }
+    [data-theme="dark"] table tr:hover td { background: rgba(76,130,89,.06) !important; }
+    [data-theme="dark"] .logout-btn { color: var(--muted); border-color: var(--border); }
+    [data-theme="dark"] .tab { color: var(--muted); border-color: var(--border); background: transparent; }
+    [data-theme="dark"] .tab.on { background: rgba(76,130,89,.12); color: var(--green2); }
+    [data-theme="dark"] .btn-ghost { color: var(--text); border-color: var(--border); }
+
+    /* ── THEME TOGGLE ── */
+    .theme-btn {
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 14px;
+      border-radius: 30px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--muted);
+      transition: all .2s;
+      flex-shrink: 0;
+    }
+    .theme-btn:hover { border-color: var(--green2); color: var(--text); }
+
+    /* ── PDF EXPORT BUTTON ── */
+    .export-btn {
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 14px;
+      border-radius: 30px;
+      border: 1px solid rgba(85,135,151,.35);
+      background: rgba(85,135,151,.07);
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--blue);
+      transition: all .2s;
+      flex-shrink: 0;
+      text-decoration: none;
+    }
+    .export-btn:hover { background: rgba(85,135,151,.14); border-color: var(--blue); }
+
+    /* ── LOGIN BACKGROUND IMAGE ── */
+    .login-bg {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      position: relative; overflow: hidden;
+    }
+    .login-bg-cover {
+      position: fixed; inset: 0; z-index: 0;
+      background: url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1800&q=85') center/cover no-repeat;
+      filter: brightness(.32) saturate(.7);
+    }
+    [data-theme="dark"] .login-bg-cover { filter: brightness(.16) saturate(.5); }
+    .login-bg > .login-card { position: relative; z-index: 2; }
+
+    /* ── SIDEBAR FARM THUMBNAIL ── */
+    .sb-thumb {
+      margin: 8px 14px 4px;
+      border-radius: 10px; overflow: hidden;
+      height: 80px; position: relative;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .sb-thumb img { width: 100%; height: 100%; object-fit: cover; opacity: .72; display: block; }
+    .sb-thumb-tag {
+      position: absolute; bottom: 5px; left: 8px;
+      font-size: 8.5px; font-weight: 800; color: #fff;
+      text-shadow: 0 1px 4px rgba(0,0,0,.8);
+      letter-spacing: 1.2px; text-transform: uppercase;
+    }
+
+    /* ── HERO IMAGE BANNER ── */
+    .hero-banner {
+      border-radius: 14px; overflow: hidden;
+      position: relative; height: 154px;
+      margin-bottom: 15px;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .hero-banner img {
+      width: 100%; height: 100%; object-fit: cover; opacity: .58;
+      transition: opacity .4s;
+    }
+    .hero-banner:hover img { opacity: .68; }
+    .hero-banner-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(105deg, rgba(33,51,38,.75) 0%, rgba(0,0,0,.18) 100%);
+      display: flex; align-items: flex-end; padding: 18px 20px; gap: 22px;
+    }
+    .hbs { color: #fff; }
+    .hbs-v { font-size: 26px; font-weight: 800; font-family: var(--mono); line-height: 1; }
+    .hbs-l { font-size: 9px; font-weight: 800; opacity: .72; text-transform: uppercase; letter-spacing: 1.1px; margin-top: 3px; }
+
+    /* ── FARM CARD IMAGE ── */
+    .farm-img {
+      width: 100%; height: 105px; object-fit: cover;
+      border-radius: 9px; margin-bottom: 11px;
+      opacity: .8; display: block;
+      transition: opacity .3s;
+    }
+    .farm-card:hover .farm-img { opacity: .95; }
+
+    /* ── REGISTRATION STYLES ── */
+    .auth-mode-bar {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      background: var(--bg2); border-radius: 10px; padding: 3px;
+      margin-bottom: 20px; border: 1px solid var(--border);
+      gap: 3px;
+    }
+    .auth-mode-btn {
+      padding: 9px 6px; border-radius: 7px; border: none;
+      cursor: pointer; font-family: var(--font);
+      font-size: 12px; font-weight: 700;
+      background: transparent; color: var(--muted);
+      transition: all .18s;
+    }
+    .auth-mode-btn.on { background: var(--bg3); color: var(--green); box-shadow: 0 1px 6px rgba(0,0,0,.07); }
+    .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .role-card {
+      padding: 12px; border-radius: 10px;
+      border: 1.5px solid var(--border);
+      cursor: pointer; background: transparent;
+      font-family: var(--font); transition: all .2s;
+      text-align: left;
+    }
+    .role-card.on { border-color: var(--green); background: rgba(76,130,89,.07); }
+    .role-card-icon { font-size: 22px; margin-bottom: 5px; }
+    .role-card-title { font-size: 13px; font-weight: 800; color: var(--text); }
+    .role-card-sub { font-size: 10px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+
+    /* ── PRINT / PDF STYLES ── */
+    @media print {
+      .sidebar, .theme-btn, .export-btn, .btn, .tabs, .live-tag,
+      .logout-btn, .tb-right, .modal, .toast, .overlay { display: none !important; }
+      body { background: #fff !important; color: #000 !important; }
+      .main { margin-left: 0 !important; padding: 20px !important; }
+      .card, .stat-card, .farm-card { box-shadow: none !important; border: 1px solid #ccc !important; background: #fff !important; }
+      .stat-val, .pg-title span { color: #2a6b39 !important; }
+      @page { margin: 18mm; size: A4; }
+      .fu, .fu1, .fu2, .fu3 { animation: none !important; opacity: 1 !important; }
+      .hero-banner { page-break-inside: avoid; }
+      .sg3, .sg4, .g2, .g2b, .g3 { page-break-inside: avoid; }
     }
 
     html,
@@ -852,13 +1028,7 @@
       margin-bottom: 12px
     }
 
-    .login-bg {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: radial-gradient(ellipse at 10% 60%, rgba(7, 61, 28, .5) 0%, transparent 50%), radial-gradient(ellipse at 90% 10%, rgba(76, 130, 89, .06) 0%, transparent 45%), var(--bg)
-    }
+    /* login-bg defined in theme section above */
 
     .login-card {
       background: rgba(255, 255, 255, .97);
@@ -1170,6 +1340,13 @@
 
 <body>
   <div id="root"></div>
+  <!-- Theme init (before React to avoid flash) -->
+  <script>
+    (function(){
+      var t = localStorage.getItem('gl-theme') || 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
   <script type="text/babel">
     const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
@@ -1413,6 +1590,41 @@
     }
     function Spin() { return <div className="spin" />; }
 
+    /* ── THEME TOGGLE COMPONENT ── */
+    function ThemeToggle() {
+      const [dark, setDark] = useState(function(){ return document.documentElement.getAttribute('data-theme') === 'dark'; });
+      const toggle = function() {
+        const next = dark ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('gl-theme', next);
+        setDark(!dark);
+      };
+      return (
+        <button className="theme-btn" onClick={toggle} title="Toggle dark/light mode">
+          <span>{dark ? '☀️' : '🌙'}</span>
+          <span>{dark ? 'Light' : 'Dark'}</span>
+        </button>
+      );
+    }
+
+    /* ── PDF EXPORT COMPONENT ── */
+    function ExportPDF({ label }) {
+      const handleExport = function() {
+        const style = document.createElement('style');
+        style.id = '__pdf_helper';
+        style.innerHTML = '.tabs button:not(.on){display:none!important}';
+        document.head.appendChild(style);
+        window.print();
+        setTimeout(function(){ const el = document.getElementById('__pdf_helper'); if(el) el.remove(); }, 800);
+      };
+      return (
+        <button className="export-btn" onClick={handleExport} title="Export this view as PDF">
+          <span>⬇</span>
+          <span>{label || 'Export PDF'}</span>
+        </button>
+      );
+    }
+
     /* ── FARMER DASHBOARD ── */
     function FarmerDash({ user, setUser, setToast, activeTab, setActiveTab }) {
       const [recs, setRecs] = useState(function () { return getRecs(user.id); });
@@ -1424,7 +1636,7 @@
       // If hosting the site publicly but running main.py on your laptop via Ngrok,
       // paste your Ngrok URL here (e.g., 'https://a1b2c3d4.ngrok-free.app').
       // Otherwise, it defaults to your local computer (127.0.0.1:8000).
-      const NGROK_URL = 'https://two-geese-travel.loca.lt';
+      const NGROK_URL = 'https://fruity-humans-tease.loca.lt';
 
       const getApiHost = () => {
         if (NGROK_URL) return NGROK_URL;
@@ -1621,6 +1833,8 @@
             </div>
             <div className="tb-right">
               <div className="live-tag"><div className="live-dot" />Live Monitoring</div>
+              <ExportPDF label="Export PDF" />
+              <ThemeToggle />
               <div className="user-pill"><div className="u-dot" />{fu.name}</div>
             </div>
           </div>
@@ -1632,6 +1846,16 @@
 
           {activeTab === 'overview' && (
             <div className="fu">
+              {/* Farm hero image */}
+              <div className="hero-banner">
+                <img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1400&q=80" alt="Aerial farm view" />
+                <div className="hero-banner-overlay">
+                  <div className="hbs"><div className="hbs-v">{(fu.total || 0).toFixed(1)}</div><div className="hbs-l">Total Credits</div></div>
+                  <div className="hbs"><div className="hbs-v">{fu.area} ac</div><div className="hbs-l">Farm Area</div></div>
+                  <div className="hbs"><div className="hbs-v">{fu.crop}</div><div className="hbs-l">Crop</div></div>
+                  <div style={{ marginLeft:'auto', color:'rgba(255,255,255,.65)', fontSize:10.5, fontWeight:700, alignSelf:'flex-end' }}>📍 {fu.loc}</div>
+                </div>
+              </div>
               <div className="sg3">
                 {[
                   { l: 'Carbon Credits', v: (fu.total || 0).toFixed(1), s: 'tCO₂ sequestered', c: 'var(--green)' },
@@ -1865,6 +2089,8 @@
             </div>
             <div className="tb-right">
               <div className="live-tag"><div className="live-dot" />{farms.length} Active Farms</div>
+              <ExportPDF label="Export PDF" />
+              <ThemeToggle />
               <div className="user-pill"><div className="u-dot" />{fu.name}</div>
             </div>
           </div>
@@ -1891,9 +2117,18 @@
                 <div className="empty fu"><div className="ei">🌾</div>No farms match. Farmers need to simulate first!</div>
               ) : (
                 <div className="farms-grid fu">
-                  {farms.map(function (farm) {
+                  {farms.map(function (farm, idx) {
+                    const CROP_IMGS = {
+                      Rice: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=400&q=75',
+                      Wheat: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=400&q=75',
+                      Coffee: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=400&q=75',
+                      Grapes: 'https://images.unsplash.com/photo-1423189345680-676a5d9c4f6e?w=400&q=75',
+                      Spices: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=75',
+                    };
+                    const farmImg = CROP_IMGS[farm.crop] || 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=400&q=75';
                     return (
                       <div key={farm.id} className="farm-card">
+                        <img className="farm-img" src={farmImg} alt={farm.farmName} />
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 11 }}>
                           <div><div style={{ fontSize: 14.5, fontWeight: 800, marginBottom: 2 }}>{farm.farmName}</div><div style={{ fontSize: 10.5, color: 'var(--muted)', fontFamily: 'var(--mono)' }}>📍 {farm.loc} · {farm.crop}</div></div>
                           <span className={'badge ' + (farm.cons >= 85 ? 'b-hi' : farm.cons >= 70 ? 'b-md' : 'b-lo')}>{farm.cons}% cons.</span>
@@ -2003,7 +2238,7 @@
 
     /* ── AUTH SCREEN ── */
     function AuthScreen({ onLogin }) {
-      const [mode, setMode] = useState('login');
+      const [mode, setMode] = useState('demo');
       const [role, setRole] = useState('farmer');
       const [loading, setLoading] = useState(false);
       const [err, setErr] = useState('');
@@ -2026,7 +2261,7 @@
             } else {
               const extra = role === 'farmer' ? { farmName: fields.farmName || fields.name + "'s Farm", loc: fields.loc || 'India', area: Number(fields.area) || 10, crop: fields.crop } : (role === 'trader' && fields.wallet ? { wallet: fields.wallet } : {});
               u = registerUser(role, Object.assign({ email: fields.email.trim().toLowerCase(), pw: fields.pw, name: fields.name.trim() }, extra));
-              setOk('Account created!');
+              setOk('Account created successfully.');
             }
             setTimeout(function () { onLogin(role, u); }, 350);
           } catch (e) { setErr(e.message); }
@@ -2038,24 +2273,111 @@
 
       return (
         <div className="login-bg">
+          <div className="login-bg-cover" />
+          {/* Theme toggle even on login */}
+          <div style={{ position:'fixed', top:18, right:18, zIndex:10 }}><ThemeToggle /></div>
           <div className="login-card">
             <div className="login-head">
               <span className="login-icon">🌿</span>
               <div className="login-title">Green Ledger</div>
-              <div className="login-sub">Project Demo Link</div>
+              <div className="login-sub">Carbon Credit Platform · Polygon Amoy</div>
             </div>
 
-            <div className="login-footer" style={{ marginTop: 0 }}>
-              <div style={{ marginBottom: 15, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 800 }}>— Select Portal to View —</div>
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', flexDirection: 'column' }}>
-                {[['ravi@demo.io', 'farmer', '🌾 View as Farmer (Video/Sensor Sim)'], ['amit@demo.io', 'trader', '📈 View as Trader (Marketplace)']].map(function ([e, r, l]) {
-                  return <button key={e} className="btn full" style={{ padding: '16px' }} onClick={function () { quick(e, r); }}>{l}</button>;
-                })}
-              </div>
-              <div style={{ marginTop: 18, fontSize: 10, color: '#6b8071', lineHeight: 1.5 }}>
-                Bypassing standard auth for hackathon demo purposes. Both views simulate connection to the active FastAPI backend and Wokwi sensors.
-              </div>
+            {/* Mode selector */}
+            <div className="auth-mode-bar">
+              {[['demo','🚀 Quick Demo'],['login','🔐 Sign In'],['register','✏️ Register']].map(function([m,l]){
+                return <button key={m} className={'auth-mode-btn'+(mode===m?' on':'')} onClick={function(){ setMode(m); setErr(''); setOk(''); }}>{l}</button>;
+              })}
             </div>
+
+            {/* ── DEMO ── */}
+            {mode === 'demo' && (
+              <div>
+                <div style={{ fontSize:11, color:'var(--muted)', textAlign:'center', marginBottom:16, lineHeight:1.7 }}>
+                  Select a portal to explore the platform. Connects to the FastAPI + Wokwi backend.
+                </div>
+                {[
+                  ['ravi@demo.io','farmer','🌾','Farmer Portal','Sensor data · Video analysis · Carbon credits'],
+                  ['amit@demo.io','trader','📈','Trader Portal','Marketplace · Portfolio · Blockchain wallet'],
+                ].map(function([email,r,icon,title,sub]){
+                  return (
+                    <button key={email} onClick={function(){ quick(email, r); }}
+                      style={{ width:'100%', padding:'15px 18px', background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:12, cursor:'pointer', fontFamily:'var(--font)', textAlign:'left', marginBottom:9, display:'flex', alignItems:'center', gap:14, transition:'border-color .2s' }}
+                      onMouseEnter={function(e){ e.currentTarget.style.borderColor='var(--green2)'; }}
+                      onMouseLeave={function(e){ e.currentTarget.style.borderColor='var(--border)'; }}>
+                      <div style={{ fontSize:28, flexShrink:0 }}>{icon}</div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontWeight:800, fontSize:13.5, color:'var(--text)' }}>{title}</div>
+                        <div style={{ fontSize:10.5, color:'var(--muted)', marginTop:2 }}>{sub}</div>
+                      </div>
+                      <div style={{ color:'var(--green)', fontWeight:800, fontSize:16, opacity:.6 }}>→</div>
+                    </button>
+                  );
+                })}
+                <div style={{ marginTop:14, textAlign:'center', fontSize:10.5, color:'var(--muted)', lineHeight:1.6 }}>
+                  Hackathon demo mode — auth bypassed. Use <strong>Sign In</strong> or <strong>Register</strong> for full credentials.
+                </div>
+              </div>
+            )}
+
+            {/* ── LOGIN ── */}
+            {mode === 'login' && (
+              <div>
+                <div className="role-grid">
+                  {[['farmer','🌾','Farmer','Earn credits from your land'],['trader','📈','Trader','Buy & trade carbon credits']].map(function([r,icon,label,desc]){
+                    return <button key={r} className={'role-card'+(role===r?' on':'')} onClick={function(){ setRole(r); }}>
+                      <div className="role-card-icon">{icon}</div>
+                      <div className="role-card-title">{label}</div>
+                      <div className="role-card-sub">{desc}</div>
+                    </button>;
+                  })}
+                </div>
+                {err && <div className="err-box">{err}</div>}
+                {ok && <div className="ok-box">{ok}</div>}
+                <div className="fg"><label className="fl">Email Address</label><input className="fi" type="email" placeholder="you@example.com" value={fields.email} onChange={upd('email')} /></div>
+                <div className="fg"><label className="fl">Password</label><input className="fi" type="password" placeholder="Min. 8 characters" value={fields.pw} onChange={upd('pw')} /></div>
+                <button className="btn full" disabled={loading} onClick={handle} style={{ marginTop:6 }}>{loading ? <><Spin />Signing in...</> : 'Sign In →'}</button>
+                <div className="login-footer">Demo: <code>ravi@demo.io</code> / <code>password123</code></div>
+              </div>
+            )}
+
+            {/* ── REGISTER ── */}
+            {mode === 'register' && (
+              <div>
+                <div className="role-grid">
+                  {[['farmer','🌾','Farmer','Earn carbon credits'],['trader','📈','Trader','Trade on marketplace']].map(function([r,icon,label,desc]){
+                    return <button key={r} className={'role-card'+(role===r?' on':'')} onClick={function(){ setRole(r); }}>
+                      <div className="role-card-icon">{icon}</div>
+                      <div className="role-card-title">{label}</div>
+                      <div className="role-card-sub">{desc}</div>
+                    </button>;
+                  })}
+                </div>
+                {err && <div className="err-box">{err}</div>}
+                {ok && <div className="ok-box">{ok}</div>}
+                <div className="f2">
+                  <div className="fg"><label className="fl">Full Name *</label><input className="fi" placeholder="Ravi Kumar" value={fields.name} onChange={upd('name')} /></div>
+                  <div className="fg"><label className="fl">Email *</label><input className="fi" type="email" placeholder="you@example.com" value={fields.email} onChange={upd('email')} /></div>
+                </div>
+                <div className="fg"><label className="fl">Password (8+ chars) *</label><input className="fi" type="password" placeholder="Secure password" value={fields.pw} onChange={upd('pw')} /></div>
+                {role === 'farmer' && <>
+                  <div className="f2">
+                    <div className="fg"><label className="fl">Farm Name</label><input className="fi" placeholder="My Carbon Farm" value={fields.farmName} onChange={upd('farmName')} /></div>
+                    <div className="fg"><label className="fl">Location</label><input className="fi" placeholder="West Bengal" value={fields.loc} onChange={upd('loc')} /></div>
+                  </div>
+                  <div className="f2">
+                    <div className="fg"><label className="fl">Area (acres)</label><input className="fi" type="number" placeholder="10" value={fields.area} onChange={upd('area')} /></div>
+                    <div className="fg"><label className="fl">Primary Crop</label>
+                      <select className="fs" value={fields.crop} onChange={upd('crop')}>
+                        {['Rice','Wheat','Coffee','Grapes','Spices','Cotton','Sugarcane','Other'].map(function(c){ return <option key={c}>{c}</option>; })}
+                      </select>
+                    </div>
+                  </div>
+                </>}
+                {role === 'trader' && <div className="fg"><label className="fl">Wallet Address (optional)</label><input className="fi" placeholder="0x..." value={fields.wallet} onChange={upd('wallet')} /></div>}
+                <button className="btn full" disabled={loading} onClick={handle} style={{ marginTop:6 }}>{loading ? <><Spin />Creating account...</> : 'Create Account →'}</button>
+              </div>
+            )}
           </div>
         </div>
       );
@@ -2097,6 +2419,13 @@
         <div className="shell">
           <div className="sidebar">
             <div className="sb-logo"><span className="sb-logo-icon">🌿</span><div><div className="sb-logo-name">Green Ledger</div><div className="sb-logo-sub">Carbon Credits</div></div></div>
+            <div className="sb-thumb">
+              <img src={role === 'farmer'
+                ? 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=300&q=75'
+                : 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=300&q=75'
+              } alt="context" />
+              <div className="sb-thumb-tag">{role === 'farmer' ? '🌱 Active Farm' : '📊 Live Market'}</div>
+            </div>
             {nav.map(function (item, i) {
               return <div key={i} className={'nav-item' + (navIdx === i ? ' active' : '')} onClick={function () { handleNav(i, item.tab); }}><span className="nav-icon">{item.icon}</span>{item.label}</div>;
             })}
